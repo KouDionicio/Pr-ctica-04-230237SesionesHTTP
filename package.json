@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon app.js"
   },
   "author": "Citlalli Perez Dionicio",
   "license": "ISC",
@@ -16,6 +16,7 @@
     "express-session": "^1.18.1",
     "moment-timezone": "^0.5.46",
     "node-js": "^1.0.0",
+    "nodemon": "^3.1.9",
     "uuid": "^11.0.5"
   }
 }
