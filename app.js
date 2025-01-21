@@ -4,13 +4,14 @@ import bodyParser from "body-parser";
 import moment from "moment-timezone";
 import { v4 as uuidv4 } from 'uuid';
 import os from "os"
+import cors from "cors"
 
 const app = express();
 const PORT = 3500;
 
 app.use(express.json());  // Asegúrate de usar este middleware
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cors())
 // Configuración del middleware de sesión
 app.use(session({
     secret: "p04-CPD#seiyakoulovers-SesionesPersistentes",
