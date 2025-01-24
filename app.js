@@ -62,10 +62,9 @@ app.post("/login", (req, res) => {
 
     // Generar un ID de sesión único
     const sessionId = uuidv4();
-    const now = new Date();
+    const now = moment.tz('America/Mexico_City').format('DD-MM-YYYY HH:mm:ss');
 
-    // Guardar los datos de la sesión en req.session
-
+    // Guardar los datos de la sesión en sessionStore
     sessionStore[sessionId] ={
         sessionId,
         email,
@@ -85,19 +84,16 @@ app.post("/login", (req, res) => {
 app.post("/logout", (req, res) => {
     const { sessionId } = req.body;
 
-    if (!sessionId || !req.session.sessionId) {
+    if (!sessionId || !sessionStore[sessionId]) {
         return res.status(404).json({ message: "No se encuentra una sesión activa" });
     }
 
-    // Eliminar la sesión de la memoria
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).send('Error al cerrar sesión');
-        }
-    });
+    // Eliminar la sesión de sessionStore
+    delete sessionStore[sessionId];  // Elimina la sesión del almacenamiento
 
     res.status(200).json({ message: "Logout successful" });
 });
+
 
 // Actualización de la sesión
 app.put("/update", (req, res) => {
@@ -109,19 +105,22 @@ app.put("/update", (req, res) => {
 
     if (email) sessionStore[sessionId].email = email;
     if (nickname) sessionStore[sessionId].nickname = nickname;
+    session.lastAccessed = now.format()
+
+    const connection = now.diff(moment(session.createAt), 'seconds')
 
     sessionStore[sessionId].lastAccessed = new Date();
 
     res.status(200).json({
         message: "Sesión ha sido actualizada",
-        session: req.session
+        session:sessionStore[sessionId]
     });
 });
 
 // Endpoint para verificar el estado de la sesión
 app.get("/status", (req, res) => {
 
-    const { sessionId } = req.query; // Obtener sessionId desde la query string
+    const { sessionId } = req.query; 
 
     if (!sessionId || !sessionStore[sessionId]) {
         return res.status(404).json({ message: "No existe una sesión activa" });
@@ -129,7 +128,7 @@ app.get("/status", (req, res) => {
 
     res.status(200).json({
         message: "Sesión activa",
-        session: sessionStore[sessionId]  // Devolver la información desde sessionStore
+        session: sessionStore[sessionId]  
     });
 });
 
