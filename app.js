@@ -49,7 +49,7 @@ const getServerNetworkInfo = () =>{
         }
     }
 }
-
+const sessionStore = {}
 
 // Login Endpoint
 app.post("/login", (req, res) => {
@@ -65,15 +65,8 @@ app.post("/login", (req, res) => {
     const now = new Date();
 
     // Guardar los datos de la sesión en req.session
-    req.session.sessionId = sessionId;
-    req.session.email = email;
-    req.session.nickname = nickname;
-    req.session.macAddress = macAddress;
-    req.session.ip = getServerNetworkInfo();
-    req.session.createdAt = now;
-    req.session.lastAccessed = now;
 
-    /*sessionStorage[sessionId] ={
+    sessionStore[sessionId] ={
         sessionId,
         email,
         nickname,
@@ -81,7 +74,7 @@ app.post("/login", (req, res) => {
         ip: getServerNetworkInfo(),
         createAt: now,
         lastAccessed: now
-    }*/
+    }
     res.status(200).json({
         message: "Se ha logeado de manera exitosa !!!",
         sessionId
@@ -107,17 +100,17 @@ app.post("/logout", (req, res) => {
 });
 
 // Actualización de la sesión
-app.post("/update", (req, res) => {
+app.put("/update", (req, res) => {
     const { sessionId, email, nickname } = req.body;
 
-    if (!sessionId || !req.session.sessionId) {
+    if (!sessionId || !sessionStore[sessionId]){
         return res.status(404).json({ message: "No existe una sesión activa" });
     }
 
-    if (email) req.session.email = email;
-    if (nickname) req.session.nickname = nickname;
+    if (email) sessionStore[sessionId].email = email;
+    if (nickname) sessionStore[sessionId].nickname = nickname;
 
-    req.session.lastAccessed = new Date();
+    sessionStore[sessionId].lastAccessed = new Date();
 
     res.status(200).json({
         message: "Sesión ha sido actualizada",
@@ -127,13 +120,16 @@ app.post("/update", (req, res) => {
 
 // Endpoint para verificar el estado de la sesión
 app.get("/status", (req, res) => {
-    if (!req.session || !req.session.sessionId) {
+
+    const { sessionId } = req.query; // Obtener sessionId desde la query string
+
+    if (!sessionId || !sessionStore[sessionId]) {
         return res.status(404).json({ message: "No existe una sesión activa" });
     }
 
     res.status(200).json({
         message: "Sesión activa",
-        session: req.session
+        session: sessionStore[sessionId]  // Devolver la información desde sessionStore
     });
 });
 
