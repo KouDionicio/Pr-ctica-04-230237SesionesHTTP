@@ -11,7 +11,8 @@ const PORT = 3500;
 
 app.use(express.json());  // Asegúrate de usar este middleware
 app.use(express.urlencoded({ extended: true }));
-app.use(cors())
+app.use(cors());
+
 // Configuración del middleware de sesión
 app.use(session({
     secret: "p04-CPD#seiyakoulovers-SesionesPersistentes",
@@ -20,7 +21,7 @@ app.use(session({
     cookie: { maxAge: 5 * 60 * 1000 }
 }));
 
-// Función de utilidad que permitirá acceder a la información de la interfaz de red en este caso (LAN)
+// Función de utilidad que permitirá acceder a la información de la interfaz de red (LAN)
 const getClienteIP = (req) => {
     return (
         req.headers["x-forwarded-for"] ||
@@ -31,35 +32,44 @@ const getClienteIP = (req) => {
 };
 
 // Endpoint para mensaje de bienvenida
-app.get("/", (req, res)=>{
-    return res.status(200).json({message: "Bienvenida al API de Control de Sesiones",
+app.get("/", (req, res) => {
+    return res.status(200).json({
+        message: "Bienvenida al API de Control de Sesiones",
         author: "Citlalli Perez Dionicio"
-    })
-})
+    });
+});
 
-// Funcion de utilidad que permitira acceder a la informacion de la interfaz de red
-const getServerNetworkInfo = () =>{
+// Función de utilidad que permitirá acceder a la información de la interfaz de red
+const getServerNetworkInfo = () => {
     const interfaces = os.networkInterfaces();
 
-    for(const name in interfaces){
-        for(const iface of interfaces[name]){
-            if(iface.family === 'IPv4' && !iface.internal){
-                return {serverIp: iface.address, serverMac: iface.mac}
+    for (const name in interfaces) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return { serverIp: iface.address, serverMac: iface.mac };
             }
         }
     }
-}
-const sessionStore = {}
+};
+
+const sessionStore = {};
 
 // Configuración del intervalo de inactividad (2 minutos = 120,000 ms)
 const SESSION_TIMEOUT = 2 * 60 * 1000; // 2 minutos en milisegundos
 
 // Función para eliminar sesiones inactivas
 const cleanupInactiveSessions = () => {
-    const now = moment.tz("America/Mexico_City");
+    const now = moment.tz("America/Mexico_City"); // Usamos un objeto moment válido
     for (const sessionId in sessionStore) {
         const session = sessionStore[sessionId];
-        const lastAccessed = moment(session.lastAccessed);
+        const lastAccessed = moment(session.lastAccessed, "DD-MM-YYYY HH:mm:ss"); // Usamos el formato personalizado
+
+        // Verificamos si lastAccessed es válido
+        if (!lastAccessed.isValid()) {
+            console.error(`Fecha no válida para la sesión ${sessionId}`);
+            continue;
+        }
+
         const inactivityDuration = now.diff(lastAccessed);
 
         if (inactivityDuration > SESSION_TIMEOUT) {
@@ -84,10 +94,10 @@ app.post("/login", (req, res) => {
 
     // Generar un ID de sesión único
     const sessionId = uuidv4();
-    const now = moment.tz('America/Mexico_City').format('DD-MM-YYYY HH:mm:ss');
+    const now = moment.tz('America/Mexico_City').format('DD-MM-YYYY HH:mm:ss'); // Formato de hora personalizado
 
     // Guardar los datos de la sesión en sessionStore
-    sessionStore[sessionId] ={
+    sessionStore[sessionId] = {
         sessionId,
         email,
         nickname,
@@ -95,7 +105,8 @@ app.post("/login", (req, res) => {
         ip: getServerNetworkInfo(),
         createAt: now,
         lastAccessed: now
-    }
+    };
+
     res.status(200).json({
         message: "Se ha logeado de manera exitosa !!!",
         sessionId
@@ -116,30 +127,34 @@ app.post("/logout", (req, res) => {
     res.status(200).json({ message: "Logout successful" });
 });
 
-
 // Actualización de la sesión
 app.put("/update", (req, res) => {
     const { sessionId, email, nickname } = req.body;
 
-    if (!sessionId || !sessionStore[sessionId]){
+    if (!sessionId || !sessionStore[sessionId]) {
         return res.status(404).json({ message: "No existe una sesión activa" });
     }
 
     const session = sessionStore[sessionId];
-    const now = moment.tz("America/Mexico_City");
+    const now = moment.tz("America/Mexico_City"); 
 
     if (email) sessionStore[sessionId].email = email;
     if (nickname) sessionStore[sessionId].nickname = nickname;
-    session.lastAccessed = now.format()
+    session.lastAccessed = now.format('DD-MM-YYYY HH:mm:ss'); 
 
-    // Tiempo de conexión (diferencia entre createdAt y la hora actual)
-    const connectionTime = now.diff(moment(session.createdAt), 'seconds');
+    //? Verificamos si las fechas son válidas
+    const createdAtMoment = moment(session.createdAt, 'DD-MM-YYYY HH:mm:ss');
+    const lastAccessedMoment = moment(session.lastAccessed, 'DD-MM-YYYY HH:mm:ss');
 
-    // Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
-    const inactivityTime = now.diff(moment(session.lastAccessed), 'seconds');
+    if (!createdAtMoment.isValid() || !lastAccessedMoment.isValid()) {
+        return res.status(500).json({ message: "Error: Fechas no válidas." });
+    }
 
-    sessionStore[sessionId].lastAccessed = new Date();
+    //? Tiempo de conexión (diferencia entre createdAt y la hora actual)
+    const connectionTime = now.diff(createdAtMoment, 'seconds');
 
+    //? Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
+    const inactivityTime = now.diff(lastAccessedMoment, 'seconds');
     res.status(200).json({
         message: "Sesión ha sido actualizada",
         session: {
@@ -150,22 +165,48 @@ app.put("/update", (req, res) => {
     });
 });
 
-// Endpoint para verificar el estado de la sesión
+//? Endpoint para verificar el estado de la sesión
 app.get("/status", (req, res) => {
-
-    const { sessionId } = req.query; 
+    const { sessionId } = req.query;
 
     if (!sessionId || !sessionStore[sessionId]) {
         return res.status(404).json({ message: "No existe una sesión activa" });
     }
 
+    const session = sessionStore[sessionId];
+    const now = moment.tz("America/Mexico_City");
+
+    const createdAtMoment = moment(session.createdAt, 'DD-MM-YYYY HH:mm:ss');
+    const lastAccessedMoment = moment(session.lastAccessed, 'DD-MM-YYYY HH:mm:ss');
+
+    // Validación de las fechas
+    if (!createdAtMoment.isValid() || !lastAccessedMoment.isValid()) {
+        return res.status(500).json({ message: "Error: Fechas no válidas." });
+    }
+
+    // Tiempo de conexión (diferencia entre createdAt y la hora actual)
+    const connectionTime = now.diff(createdAtMoment, 'seconds');
+
+    // Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
+    const inactivityTime = now.diff(lastAccessedMoment, 'seconds');
+
+    
     res.status(200).json({
         message: "Sesión activa",
-        session: sessionStore[sessionId]  
+        session: {
+            ...session,
+            connectionTime: `${connectionTime} seconds`, // Tiempo de conexión
+            inactivityTime: `${inactivityTime} seconds`  // Tiempo de inactividad
+        }
     });
 });
 
-
+app.get("/sessions", (req, res) => {
+    res.status(200).json({
+        message: "Sesiones activas",
+        activeSessions: Object.values(sessionStore)
+    });
+});
 
 // Inicializamos el servicio
 app.listen(PORT, () => {
