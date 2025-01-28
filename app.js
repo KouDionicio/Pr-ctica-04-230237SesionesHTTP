@@ -51,6 +51,28 @@ const getServerNetworkInfo = () =>{
 }
 const sessionStore = {}
 
+// Configuración del intervalo de inactividad (2 minutos = 120,000 ms)
+const SESSION_TIMEOUT = 2 * 60 * 1000; // 2 minutos en milisegundos
+
+// Función para eliminar sesiones inactivas
+const cleanupInactiveSessions = () => {
+    const now = moment.tz("America/Mexico_City");
+    for (const sessionId in sessionStore) {
+        const session = sessionStore[sessionId];
+        const lastAccessed = moment(session.lastAccessed);
+        const inactivityDuration = now.diff(lastAccessed);
+
+        if (inactivityDuration > SESSION_TIMEOUT) {
+            // Si la sesión ha estado inactiva por más de 2 minutos, eliminarla
+            delete sessionStore[sessionId];
+            console.log(`Sesión ${sessionId} eliminada por inactividad.`);
+        }
+    }
+};
+
+// Intervalo para limpiar sesiones inactivas
+setInterval(cleanupInactiveSessions, 60 * 1000); // Revisa cada minuto
+
 // Login Endpoint
 app.post("/login", (req, res) => {
     console.log("Datos recibidos:", req.body);
@@ -103,17 +125,28 @@ app.put("/update", (req, res) => {
         return res.status(404).json({ message: "No existe una sesión activa" });
     }
 
+    const session = sessionStore[sessionId];
+    const now = moment.tz("America/Mexico_City");
+
     if (email) sessionStore[sessionId].email = email;
     if (nickname) sessionStore[sessionId].nickname = nickname;
     session.lastAccessed = now.format()
 
-    const connection = now.diff(moment(session.createAt), 'seconds')
+    // Tiempo de conexión (diferencia entre createdAt y la hora actual)
+    const connectionTime = now.diff(moment(session.createdAt), 'seconds');
+
+    // Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
+    const inactivityTime = now.diff(moment(session.lastAccessed), 'seconds');
 
     sessionStore[sessionId].lastAccessed = new Date();
 
     res.status(200).json({
         message: "Sesión ha sido actualizada",
-        session:sessionStore[sessionId]
+        session: {
+            ...session,
+            connectionTime: `${connectionTime} seconds`, // Tiempo de conexión
+            inactivityTime: `${inactivityTime} seconds`  // Tiempo de inactividad
+        }
     });
 });
 
