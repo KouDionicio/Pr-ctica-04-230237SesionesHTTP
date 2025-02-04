@@ -208,6 +208,22 @@ app.get("/sessions", (req, res) => {
     });
 });
 
+/*app.get("/sessions", (req, res) => {
+    res.status(200).json({
+        message: "Sesiones activas",
+        activeSessions: Object.values(sessionStore).filter(s => s.isActive)
+    });
+});*/
+
+// Nuevo endpoint para el registro de todas las sesiones
+app.get("/session-log", (req, res) => {
+    res.status(200).json({
+        message: "Registro de todas las sesiones",
+        sessions: Object.values(sessionStore)
+    });
+});
+
+
 // Inicializamos el servicio
 app.listen(PORT, () => {
     console.log(`Servicio iniciando en http://localhost:${PORT}`);
