@@ -103,7 +103,7 @@ app.post("/login", (req, res) => {
         nickname,
         macAddress,
         ip: getServerNetworkInfo(),
-        createAt: now,
+        createdAt: now, // Usamos createdAt en lugar de createAt
         lastAccessed: now,
         isActive: true
     };
@@ -127,7 +127,6 @@ app.post("/logout", (req, res) => {
 
     res.status(200).json({ message: "Logout successful" });
 });
-
 // Actualización de la sesión
 app.put("/update", (req, res) => {
     const { sessionId, email, nickname } = req.body;
@@ -141,7 +140,7 @@ app.put("/update", (req, res) => {
 
     if (email) sessionStore[sessionId].email = email;
     if (nickname) sessionStore[sessionId].nickname = nickname;
-    session.lastAccessed = now.format('DD-MM-YYYY HH:mm:ss'); 
+    session.lastAccessed = now.format('DD-MM-YYYY HH:mm:ss');  // Asegúrate de actualizar lastAccessed con el formato correcto
     session.isActive = true;
     
     // Verificamos si las fechas son válidas
@@ -149,6 +148,7 @@ app.put("/update", (req, res) => {
     const lastAccessedMoment = moment(session.lastAccessed, 'DD-MM-YYYY HH:mm:ss');
 
     if (!createdAtMoment.isValid() || !lastAccessedMoment.isValid()) {
+        console.error(`Fechas no válidas: createdAt ${session.createdAt}, lastAccessed ${session.lastAccessed}`);
         return res.status(500).json({ message: "Error: Fechas no válidas." });
     }
 
@@ -163,7 +163,6 @@ app.put("/update", (req, res) => {
             ...session,
             connectionTime: `${connectionTime} seconds`, // Tiempo de conexión
             inactivityTime: `${inactivityTime} seconds`  // Tiempo de inactividad
-            
         }
     });
 });
@@ -184,6 +183,7 @@ app.get("/status", (req, res) => {
 
     // Validación de las fechas
     if (!createdAtMoment.isValid() || !lastAccessedMoment.isValid()) {
+        console.error(`Fechas no válidas: createdAt ${session.createdAt}, lastAccessed ${session.lastAccessed}`);
         return res.status(500).json({ message: "Error: Fechas no válidas." });
     }
 
@@ -193,7 +193,6 @@ app.get("/status", (req, res) => {
     // Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
     const inactivityTime = now.diff(lastAccessedMoment, 'seconds');
 
-    
     res.status(200).json({
         message: "Sesión activa",
         session: {
@@ -204,6 +203,7 @@ app.get("/status", (req, res) => {
     });
 });
 
+
 app.get("/sessions", (req, res) => {
     res.status(200).json({
         message: "Sesiones activas",
@@ -211,26 +211,46 @@ app.get("/sessions", (req, res) => {
     });
 });
 
-/*app.get("/sessions", (req, res) => {
-    res.status(200).json({
-        message: "Sesiones activas",
-        activeSessions: Object.values(sessionStore).filter(s => s.isActive)
-    });
-});*/
-
 // Nuevo endpoint para el registro de todas las sesiones
 app.get("/session-log", (req, res) => {
+    const now = moment.tz("America/Mexico_City");
+
+    const sessionsWithTimes = Object.values(sessionStore).map(session => {
+        const createdAtMoment = moment(session.createdAt, 'DD-MM-YYYY HH:mm:ss');
+        const lastAccessedMoment = moment(session.lastAccessed, 'DD-MM-YYYY HH:mm:ss');
+
+        // Calculamos el tiempo de conexión e inactividad
+        const connectionTime = now.diff(createdAtMoment, 'seconds');
+        const inactivityTime = now.diff(lastAccessedMoment, 'seconds');
+
+        return {
+            ...session,
+            connectionTime: `${connectionTime} seconds`, // Tiempo de conexión
+            inactivityTime: `${inactivityTime} seconds`  // Tiempo de inactividad
+        };
+    });
+
     res.status(200).json({
         message: "Registro de todas las sesiones",
-        sessions: Object.values(sessionStore)
+        sessions: sessionsWithTimes
     });
 });
+
 
 
 // Inicializamos el servicio
 app.listen(PORT, () => {
     console.log(`Servicio iniciando en http://localhost:${PORT}`);
 });
+
+
+//? Sesiones almacenadas en Memoria RAM
+/*app.get("/sessions", (req, res) => {
+    res.status(200).json({
+        message: "Sesiones activas",
+        activeSessions: Object.values(sessionStore).filter(s => s.isActive)
+    });
+});*/
 
 
 //? Sesiones almacenadas en Memoria RAM
