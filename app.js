@@ -104,7 +104,8 @@ app.post("/login", (req, res) => {
         macAddress,
         ip: getServerNetworkInfo(),
         createAt: now,
-        lastAccessed: now
+        lastAccessed: now,
+        isActive: true
     };
 
     res.status(200).json({
@@ -141,8 +142,9 @@ app.put("/update", (req, res) => {
     if (email) sessionStore[sessionId].email = email;
     if (nickname) sessionStore[sessionId].nickname = nickname;
     session.lastAccessed = now.format('DD-MM-YYYY HH:mm:ss'); 
-
-    //? Verificamos si las fechas son válidas
+    session.isActive = true;
+    
+    // Verificamos si las fechas son válidas
     const createdAtMoment = moment(session.createdAt, 'DD-MM-YYYY HH:mm:ss');
     const lastAccessedMoment = moment(session.lastAccessed, 'DD-MM-YYYY HH:mm:ss');
 
@@ -150,10 +152,10 @@ app.put("/update", (req, res) => {
         return res.status(500).json({ message: "Error: Fechas no válidas." });
     }
 
-    //? Tiempo de conexión (diferencia entre createdAt y la hora actual)
+    // Tiempo de conexión (diferencia entre createdAt y la hora actual)
     const connectionTime = now.diff(createdAtMoment, 'seconds');
 
-    //? Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
+    // Tiempo de inactividad (diferencia entre lastAccessed y la hora actual)
     const inactivityTime = now.diff(lastAccessedMoment, 'seconds');
     res.status(200).json({
         message: "Sesión ha sido actualizada",
@@ -161,6 +163,7 @@ app.put("/update", (req, res) => {
             ...session,
             connectionTime: `${connectionTime} seconds`, // Tiempo de conexión
             inactivityTime: `${inactivityTime} seconds`  // Tiempo de inactividad
+            
         }
     });
 });
@@ -208,12 +211,12 @@ app.get("/sessions", (req, res) => {
     });
 });
 
-/*app.get("/sessions", (req, res) => {
+app.get("/sessions", (req, res) => {
     res.status(200).json({
         message: "Sesiones activas",
         activeSessions: Object.values(sessionStore).filter(s => s.isActive)
     });
-});*/
+});
 
 // Nuevo endpoint para el registro de todas las sesiones
 app.get("/session-log", (req, res) => {
