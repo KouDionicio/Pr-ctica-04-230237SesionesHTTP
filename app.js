@@ -211,12 +211,12 @@ app.get("/sessions", (req, res) => {
     });
 });
 
-app.get("/sessions", (req, res) => {
+/*app.get("/sessions", (req, res) => {
     res.status(200).json({
         message: "Sesiones activas",
         activeSessions: Object.values(sessionStore).filter(s => s.isActive)
     });
-});
+});*/
 
 // Nuevo endpoint para el registro de todas las sesiones
 app.get("/session-log", (req, res) => {
