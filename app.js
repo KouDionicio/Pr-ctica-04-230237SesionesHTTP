@@ -22,14 +22,17 @@ app.use(session({
 }));
 
 // Función de utilidad que permitirá acceder a la información de la interfaz de red (LAN)
-const getClienteIP = (req) => {
+/*const getClienteIP = (req) => {
     return (
         req.headers["x-forwarded-for"] ||
         req.connection.remoteAddress ||
         req.socket.remoteAddress ||
         req.connection.socket?.remoteAddres
     );
-};
+};*/
+
+// Función para obtener la IP del cliente
+const getClienteIP =(req)=> req.ip.replace(/^.*:/, '');
 
 // Endpoint para mensaje de bienvenida
 app.get("/", (req, res) => {
@@ -103,6 +106,7 @@ app.post("/login", (req, res) => {
         nickname,
         macAddress,
         ip: getServerNetworkInfo(),
+        ipCliente: getClienteIP(req),
         createdAt: now, // Usamos createdAt en lugar de createAt
         lastAccessed: now,
         isActive: true
